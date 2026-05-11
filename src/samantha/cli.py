@@ -104,6 +104,16 @@ def main() -> None:
         sys.exit(1)
 
     memory = _init_memory(settings)
+
+    # Pre-warm embedding model so it doesn't interrupt the first message.
+    # (lru_cache means this is free on subsequent calls in the same process.)
+    try:
+        from samantha.embeddings import embed as _embed
+
+        _embed("warmup")
+    except Exception:
+        pass  # non-fatal — model will load on first use instead
+
     session = ChatSession(system_prompt=system_prompt, model_id=settings.model_id, memory=memory)
     session.start_session()
 

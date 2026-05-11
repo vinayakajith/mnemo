@@ -21,7 +21,7 @@ def _get_mem0_config(settings: Settings) -> dict[str, Any]:
             "config": {
                 "model": settings.model_id,
                 "api_key": settings.anthropic_api_key,
-                "temperature": 0.0,
+                # temperature omitted — deprecated for claude-opus-4-7+
             },
         },
         "embedder": {
