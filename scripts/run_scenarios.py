@@ -39,7 +39,7 @@ def run() -> None:
         print(f"you: {scenario}")
         print("samantha: ", end="", flush=True)
 
-        session = ChatSession(system_prompt=system_prompt, model_id=settings.bedrock_model_id)
+        session = ChatSession(system_prompt=system_prompt, model_id=settings.model_id)
         chunks: list[str] = []
         try:
             for chunk in session.send(scenario):
@@ -64,7 +64,7 @@ def run() -> None:
         json.dumps(
             {
                 "timestamp": datetime.now(tz=UTC).isoformat(),
-                "model_id": settings.bedrock_model_id,
+                "model_id": settings.model_id,
                 "scenarios": results,
             },
             indent=2,
