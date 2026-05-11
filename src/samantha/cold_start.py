@@ -56,17 +56,17 @@ def _run_loop(chat_session, memory) -> None:
         if not user_input:
             continue
 
-        console.print(f"[{STYLE_SAMANTHA}]samantha:[/{STYLE_SAMANTHA}] ", end="")
         chunks: list[str] = []
         try:
-            for chunk in chat_session.send(user_input):
-                # Buffer output so we can strip the marker before printing
-                chunks.append(chunk)
+            with console.status("", spinner="dots", spinner_style=STYLE_SAMANTHA):
+                for chunk in chat_session.send(user_input):
+                    chunks.append(chunk)
         except Exception as exc:
             console.print(f"\n[bold red]error: {exc}[/bold red]")
             logger.exception("onboarding llm error", error=str(exc))
             console.print()
             continue
+        console.print(f"[{STYLE_SAMANTHA}]samantha:[/{STYLE_SAMANTHA}] ", end="")
 
         full_response = "".join(chunks)
         done = ONBOARDING_MARKER in full_response

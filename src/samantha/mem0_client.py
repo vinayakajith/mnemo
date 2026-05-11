@@ -5,6 +5,8 @@ sentence-transformers), mem0 supports a custom embedder via the
 `EmbeddingBase` extension point. See mem0.embeddings.base.EmbeddingBase.
 """
 
+import contextlib
+import io
 from typing import Any
 
 import structlog
@@ -21,7 +23,9 @@ def _get_mem0_config(settings: Settings) -> dict[str, Any]:
             "config": {
                 "model": settings.model_id,
                 "api_key": settings.anthropic_api_key,
-                # temperature omitted — deprecated for claude-opus-4-7+
+                # None → mem0's has_temperature check fails → param not sent.
+                # Required because claude-opus-4-7+ rejects the temperature field.
+                "temperature": None,
             },
         },
         "embedder": {
@@ -44,8 +48,10 @@ def build_mem0(settings: Settings) -> Any:
     """Return a configured Mem0 Memory instance, or NoopMem0 on failure."""
     from mem0 import Memory
 
+    _sink = io.StringIO()
     try:
-        mem = Memory.from_config(_get_mem0_config(settings))
+        with contextlib.redirect_stdout(_sink), contextlib.redirect_stderr(_sink):
+            mem = Memory.from_config(_get_mem0_config(settings))
         logger.info("mem0 initialized", embedder="huggingface/bge-large-en-v1.5")
         return mem
     except Exception as exc:
@@ -75,7 +81,9 @@ def add_exchange(mem0: Any, user_id: str, user_text: str, assistant_text: str) -
         {"role": "assistant", "content": assistant_text},
     ]
     try:
-        mem0.add(messages, user_id=user_id)
+        _sink = io.StringIO()
+        with contextlib.redirect_stdout(_sink), contextlib.redirect_stderr(_sink):
+            mem0.add(messages, user_id=user_id)
     except Exception as exc:
         logger.warning("mem0 add failed", error=str(exc))
 

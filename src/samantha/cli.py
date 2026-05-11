@@ -1,5 +1,6 @@
 """Rich-styled CLI entry point."""
 
+import logging
 import signal
 import sys
 from typing import Any
@@ -14,6 +15,19 @@ from samantha.prompts import load_system_prompt
 
 console = Console()
 logger = structlog.get_logger(__name__)
+
+
+def _configure_logging() -> None:
+    # Route all Python logging to stderr so it never mixes with Rich's stdout
+    logging.basicConfig(
+        level=logging.WARNING,
+        stream=sys.stderr,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+    # structlog → stderr as well
+    structlog.configure(
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+    )
 
 STYLE_YOU = "bold cyan"
 STYLE_SAMANTHA = "bold magenta"
@@ -95,6 +109,7 @@ def _handle_forget(memory: Any, query: str) -> None:
 
 
 def main() -> None:
+    _configure_logging()
     settings = get_settings()
 
     try:
@@ -190,10 +205,15 @@ def main() -> None:
             console.print(HELP_TEXT)
             continue
 
-        console.print(f"[{STYLE_SAMANTHA}]samantha:[/{STYLE_SAMANTHA}] ", end="")
         try:
-            for chunk in session.send(user_input):
-                console.print(chunk, end="", highlight=False)
+            gen = session.send(user_input)
+            with console.status("", spinner="dots", spinner_style=STYLE_SAMANTHA):
+                first_chunk = next(gen, None)
+            console.print(f"[{STYLE_SAMANTHA}]samantha:[/{STYLE_SAMANTHA}] ", end="")
+            if first_chunk is not None:
+                console.print(first_chunk, end="", highlight=False)
+                for chunk in gen:
+                    console.print(chunk, end="", highlight=False)
         except Exception as exc:
             console.print(f"\n[{STYLE_ERR}]error: {exc}[/{STYLE_ERR}]")
             logger.exception("llm error", error=str(exc))
